@@ -1,0 +1,54 @@
+version: '3.3'
+services:
+  zookeeper:
+    container_name: zookeeper
+    image: wurstmeister/zookeeper
+    ports:
+      - 2181:2181
+  kafka:
+    container_name: kafka
+    image: wurstmeister/kafka
+    ports:
+      - 9092:9092
+    volumes:
+      - ./data/kafka:/var/run/docker.sock
+    environment:
+      - KAFKA_ADVERTISED_HOST_NAME=kafka
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+  odoo:
+    container_name: odoo
+    image: odoo:14.0
+    ports:
+      - 8069:8069
+    volumes:
+      - ./data/odoo/web-data:/var/lib/odoo
+      - ./config:/etc/odoo
+      - ./addons:/mnt/extra-addons
+      - ./data/odoo/logs:/var/log/odoo
+    environment:
+      - HOST=postgres
+      - USER=odoo
+      - PASSWORD=myodoo
+    depends_on:
+      - postgres
+  postgres:
+    container_name: postgres
+    image: postgres
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=myodoo
+      - POSTGRES_USER=odoo
+  producer:
+    container_name: producer
+    build: ./producer
+    ports:
+      - 8080:8080
+    environment:
+      - PORT=8080
+      - KAFKA_BOOTSTRAP_SERVER=kafka:9092
+      - KAFKA_TOPIC=logs
+    depends_on:
+      - kafka
+      - odoo
